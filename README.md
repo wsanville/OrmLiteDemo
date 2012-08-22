@@ -1,0 +1,1 @@
+A demo application for using OrmLite with Android.
