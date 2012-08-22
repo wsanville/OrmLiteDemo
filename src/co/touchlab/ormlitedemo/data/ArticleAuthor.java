@@ -14,7 +14,7 @@ public class ArticleAuthor
             ARTICLE_ID_COLUMN = "article_id",
             AUTHOR_ID_COLUMN = "author_id";
 
-    @DatabaseField(foreign = true, canBeNull = false, uniqueCombo = true, columnName = AUTHOR_ID_COLUMN,
+    @DatabaseField(foreign = true, canBeNull = false, foreignAutoRefresh = true, uniqueCombo = true, columnName = AUTHOR_ID_COLUMN,
             columnDefinition = "integer references " + Author.TABLE_NAME + "(" + Author.ID_COLUMN + ") on delete cascade")
     private Author author;
 

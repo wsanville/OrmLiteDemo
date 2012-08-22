@@ -9,6 +9,12 @@
             android:text="Articles and Categories from a SQLite database"
             android:textAppearance="@android:style/TextAppearance.Large"
             android:padding="8dp"/>
+    <View
+            android:id="@+id/divider"
+            android:visibility="gone"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#ccc"/>
     <ListView android:layout_weight="1"
               android:layout_width="match_parent"
               android:layout_height="0dp"

@@ -63,6 +63,7 @@ public class MainActivity extends Activity
     public void handleDataLoaded(ArticleListModel model)
     {
         listView.setAdapter(new MainAdapter(model));
+        findViewById(R.id.divider).setVisibility(View.VISIBLE);
         dialog.dismiss();
     }
 
@@ -274,7 +275,9 @@ public class MainActivity extends Activity
         private void insertSampleData(DatabaseHelper helper) throws SQLException
         {
             final int SAMPLE_COUNT = 50;
-            final String SAMPLE_ARTICLE_TEXT = "Aenean id justo non dui sodales molestie quis et nibh. Fusce eu nulla enim, id feugiat nisi. Donec feugiat est eget leo dictum rutrum. Morbi faucibus nulla a urna blandit sed consequat tellus fermentum. Quisque nec turpis eleifend mauris laoreet lacinia. Curabitur sollicitudin arcu quis mauris semper non blandit lectus pharetra. Nam condimentum egestas turpis, nec dictum enim imperdiet pharetra. Sed vel mauris magna. Cras non placerat odio. Donec faucibus odio id dolor elementum non consectetur justo suscipit? Curabitur mollis lectus ac sem consectetur lobortis. Quisque faucibus magna vitae sem auctor ullamcorper?";
+            final String SAMPLE_ARTICLE_TEXT = "Nulla nec neque sit amet libero molestie commodo sit amet quis diam. In non sapien enim. Mauris quis ipsum nec ipsum faucibus pretium sit amet blandit sapien. Nam ut magna et nisi molestie adipiscing sed eget justo. In fringilla risus in felis posuere placerat. Aenean quis orci mollis libero pellentesque euismod a nec mauris. Fusce tempus velit ut nisi lobortis congue! Pellentesque adipiscing metus luctus felis venenatis scelerisque? Praesent rhoncus iaculis nulla et sollicitudin. Proin placerat, ante vel varius vehicula, augue est cursus est, sed tristique orci quam ac massa? Mauris sodales tincidunt nibh, a sollicitudin magna volutpat vitae. Sed vitae ligula vel nibh imperdiet accumsan eu nec ipsum. Quisque laoreet, elit id dictum mollis, elit justo facilisis risus, ac interdum leo mi nec tortor.\n" +
+                    "\n" +
+                    "Aliquam tincidunt dapibus ipsum, sit amet varius sapien imperdiet pellentesque. Nulla vel eros est. Cras eu tellus et ipsum malesuada fermentum! Curabitur ac ipsum nec est fermentum ultrices at in felis. Pellentesque pellentesque nisi quis eros viverra porta! Integer in ipsum nulla, eu feugiat turpis. Donec pretium, urna dignissim aliquam convallis; ante nisl porttitor orci, eget eleifend tellus nisi a libero!";
             Author[] authors = new Author[] { new Author("First Author", "first@example.com"), new Author("Second Author", "second@example.com"), new Author("Third Author", "third@example.com") };
             Category[] topCategories = new Category[] { new Category("Android Layouts", null), new Category("Databases", null), new Category("Network Communication", null), new Category("Screen Rotation", null), new Category("Threading", null) };
             Category[] subCategories = new Category[] { new Category("SQL", topCategories[1]) };

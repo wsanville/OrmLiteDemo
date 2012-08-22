@@ -7,7 +7,7 @@ import com.j256.ormlite.table.DatabaseTable;
  * A simple Author object annotated for use with OrmLite.
  */
 @DatabaseTable(tableName = Author.TABLE_NAME)
-public class Author
+public class Author implements Comparable<Author>
 {
     public static final String
             TABLE_NAME = "authors",
@@ -70,5 +70,11 @@ public class Author
     public void setName(String name)
     {
         this.name = name;
+    }
+
+    @Override
+    public int compareTo(Author other)
+    {
+        return name.compareTo(other.getName());
     }
 }
