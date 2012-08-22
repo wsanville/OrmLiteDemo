@@ -1,11 +1,16 @@
 package co.touchlab.ormlitedemo;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.TextView;
 import co.touchlab.ormlitedemo.data.*;
 import com.j256.ormlite.dao.Dao;
@@ -15,6 +20,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -27,13 +33,14 @@ public class ArticleActivity extends Activity
 
     private LoadArticleTask task;
     private ProgressDialog dialog;
+    private int articleId;
 
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.article);
 
-        int articleId = getIntent().getIntExtra(ARTICLE_ID, -1);
+        articleId = getIntent().getIntExtra(ARTICLE_ID, -1);
         if (articleId == -1)
             throw new RuntimeException("Extra must be passed in!");
 
@@ -55,13 +62,16 @@ public class ArticleActivity extends Activity
     @Override
     public Object onRetainNonConfigurationInstance()
     {
-        task.detach();
+        if (task != null)
+            task.detach();
         return task;
     }
 
     public void handleDataLoaded(ArticleModel model)
     {
         dialog.dismiss();
+        task.detach();
+        task = null;
 
         //Fill out the views for this Activity.
         TextView title = (TextView)findViewById(R.id.article_title);
@@ -91,7 +101,40 @@ public class ArticleActivity extends Activity
 
     private void addCommentPrompt()
     {
+        View body = LayoutInflater.from(this).inflate(R.layout.comment_dialog, null);
+        final EditText nameEditText = (EditText)body.findViewById(R.id.name);
+        final EditText commentEditText = (EditText)body.findViewById(R.id.comment);
 
+        new AlertDialog.Builder(this)
+                .setTitle("Add Comment")
+                .setView(body)
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i)
+                    {
+                        String name = nameEditText.getText().toString().trim();
+                        String comments = commentEditText.getText().toString().trim();
+                        if (!name.equals("") && !comments.equals(""))
+                        {
+                            insertComment(name, comments);
+                        }
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i)
+                    {
+                        //do nothing
+                    }
+                })
+                .show();
+    }
+
+    private void insertComment(final String name, final String comments)
+    {
+        new AddCommentTask(DatabaseHelper.getInstance(this), articleId, name, comments).execute();
     }
 
     private static class ArticleModel
@@ -208,6 +251,43 @@ public class ArticleActivity extends Activity
             host = newActivity;
             if (done)
                 host.handleDataLoaded(payload);
+        }
+    }
+
+    private static class AddCommentTask extends AsyncTask<Void, Void, Boolean>
+    {
+        private int articleId;
+        private String name, comments;
+        private DatabaseHelper helper;
+
+        private AddCommentTask(DatabaseHelper helper, int articleId, String name, String comments)
+        {
+            this.helper = helper;
+            this.articleId = articleId;
+            this.comments = comments;
+            this.name = name;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids)
+        {
+            //Note: The ORM only needs the ID set for foreign objects for it to properly set the column value.
+            Article article = new Article();
+            article.setId(articleId);
+            Comment comment = new Comment(article, new Date(), comments, name);
+
+            //Perform the insert.
+            try
+            {
+                helper.getCommentDao().create(comment);
+            }
+            catch (SQLException e)
+            {
+                Log.e(TAG, "Unable to add comment.", e);
+                throw new RuntimeException(e);
+            }
+
+            return true;
         }
     }
 }

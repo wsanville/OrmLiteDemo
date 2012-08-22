@@ -40,6 +40,14 @@ public class Comment
 
     }
 
+    public Comment(Article article, Date dateAdded, String text, String user)
+    {
+        this.article = article;
+        this.dateAdded = dateAdded;
+        this.text = text;
+        this.user = user;
+    }
+
     public Comment(Article article, Date dateAdded, int id, String text, String user)
     {
         this.article = article;
