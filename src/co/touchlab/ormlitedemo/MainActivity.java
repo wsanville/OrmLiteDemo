@@ -2,6 +2,7 @@ package co.touchlab.ormlitedemo;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -25,7 +26,7 @@ import java.util.*;
 public class MainActivity extends Activity
 {
     private static String TAG = "MainActivity";
-    private LoadArticleTask task;
+    private LoadArticleListTask task;
     private ProgressDialog dialog;
     private ListView listView;
 
@@ -36,12 +37,13 @@ public class MainActivity extends Activity
         setContentView(R.layout.main);
         listView = (ListView)findViewById(R.id.listView);
 
-        System.setProperty("log.tag.ORMLite", "DEBUG");
         dialog = ProgressDialog.show(this, null, "Loading Articles", true, false);
-        task = (LoadArticleTask)getLastNonConfigurationInstance();
+        /* Kick off a task (if needed) to load the data for this activity.
+         * Note: We must be mindful of screen orientation changes here. */
+        task = (LoadArticleListTask)getLastNonConfigurationInstance();
         if (task == null)
         {
-            task = new LoadArticleTask(this);
+            task = new LoadArticleListTask(this);
             task.execute();
         }
         else
@@ -71,6 +73,17 @@ public class MainActivity extends Activity
         private ArticleListModel model;
         private LayoutInflater inflater;
         SimpleDateFormat formatter = new SimpleDateFormat("'Created on' M/d/yyyy h:mm a");
+
+        View.OnClickListener listener = new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                Article article = (Article)view.getTag();
+                MainActivity.this.startActivity(new Intent(MainActivity.this, ArticleActivity.class)
+                    .putExtra(ArticleActivity.ARTICLE_ID, article.getId()));
+            }
+        };
 
         private MainAdapter(ArticleListModel model)
         {
@@ -138,6 +151,9 @@ public class MainActivity extends Activity
                 //This demo will just show a title and created on date for articles.
                 ((TextView)view.findViewById(R.id.list_complex_title)).setText(article.getTitle());
                 ((TextView)view.findViewById(R.id.list_complex_caption)).setText(formatter.format(article.getPublishedDate()));
+                //Hook up a click listener
+                view.setTag(article);
+                view.setOnClickListener(listener);
             }
 
             return view;
@@ -186,13 +202,13 @@ public class MainActivity extends Activity
         }
     }
 
-    private static class LoadArticleTask extends AsyncTask<Void, Void, ArticleListModel>
+    private static class LoadArticleListTask extends AsyncTask<Void, Void, ArticleListModel>
     {
         private MainActivity host;
         private ArticleListModel payload;
         private boolean done;
 
-        private LoadArticleTask(MainActivity host)
+        private LoadArticleListTask(MainActivity host)
         {
             this.host = host;
         }
@@ -214,9 +230,10 @@ public class MainActivity extends Activity
                 Map<Integer, CategoryModel> allCategories = new HashMap<Integer, CategoryModel>();
                 for (Object item : articleCategoryDao.queryForAll())
                 {
+                    //Our data returned is a pair of Article and Category. We need to now organize the query results.
                     ArticleCategory mapping = (ArticleCategory)item;
 
-                    //Build a unique set of Categories from the data that was returned
+                    //Build a unique set of Categories from the data that was returned.
                     CategoryModel model = new CategoryModel(mapping.getCategory());
                     Integer key = model.getId();
 
@@ -249,12 +266,17 @@ public class MainActivity extends Activity
             }
         }
 
+        /**
+         * Called for the first run of the application (or when all Articles have been deleted).
+         * @param helper An instance of our DatabaseHelper.
+         * @throws SQLException
+         */
         private void insertSampleData(DatabaseHelper helper) throws SQLException
         {
             final int SAMPLE_COUNT = 50;
             final String SAMPLE_ARTICLE_TEXT = "Aenean id justo non dui sodales molestie quis et nibh. Fusce eu nulla enim, id feugiat nisi. Donec feugiat est eget leo dictum rutrum. Morbi faucibus nulla a urna blandit sed consequat tellus fermentum. Quisque nec turpis eleifend mauris laoreet lacinia. Curabitur sollicitudin arcu quis mauris semper non blandit lectus pharetra. Nam condimentum egestas turpis, nec dictum enim imperdiet pharetra. Sed vel mauris magna. Cras non placerat odio. Donec faucibus odio id dolor elementum non consectetur justo suscipit? Curabitur mollis lectus ac sem consectetur lobortis. Quisque faucibus magna vitae sem auctor ullamcorper?";
             Author[] authors = new Author[] { new Author("First Author", "first@example.com"), new Author("Second Author", "second@example.com"), new Author("Third Author", "third@example.com") };
-            Category[] topCategories = new Category[] { new Category("Screen Rotation", null), new Category("Databases", null), new Category("Threading", null), new Category("Android Layouts", null), new Category("Network Communication", null) };
+            Category[] topCategories = new Category[] { new Category("Android Layouts", null), new Category("Databases", null), new Category("Network Communication", null), new Category("Screen Rotation", null), new Category("Threading", null) };
             Category[] subCategories = new Category[] { new Category("SQL", topCategories[1]) };
 
             //We will need a few DAO objects from our OrmLiteSqliteOpenHelper instance
