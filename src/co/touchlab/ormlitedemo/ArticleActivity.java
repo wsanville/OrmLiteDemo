@@ -74,6 +74,24 @@ public class ArticleActivity extends Activity
         articleText.setText(model.article.getText());
 
         findViewById(R.id.divider).setVisibility(View.VISIBLE);
+
+        TextView commentCount = (TextView)findViewById(R.id.comment_count);
+        commentCount.setText(String.format("Comments: %d", model.commentCount));
+
+        //Setup click events.
+        findViewById(R.id.addComment).setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View view)
+            {
+                addCommentPrompt();
+            }
+        });
+    }
+
+    private void addCommentPrompt()
+    {
+
     }
 
     private static class ArticleModel
