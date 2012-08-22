@@ -32,6 +32,7 @@ public class ArticleActivity extends Activity
     public static String ARTICLE_ID = "ARTICLE_ID";
 
     private LoadArticleTask task;
+    private AddCommentTask commentTask;
     private ProgressDialog dialog;
     private int articleId;
 
@@ -64,6 +65,8 @@ public class ArticleActivity extends Activity
     {
         if (task != null)
             task.detach();
+        if (commentTask != null)
+            commentTask.detach(); //no need to retain this guy
         return task;
     }
 
@@ -85,8 +88,7 @@ public class ArticleActivity extends Activity
 
         findViewById(R.id.divider).setVisibility(View.VISIBLE);
 
-        TextView commentCount = (TextView)findViewById(R.id.comment_count);
-        commentCount.setText(String.format("Comments: %d", model.commentCount));
+        updateCommentCount(model.commentCount);
 
         //Setup click events.
         findViewById(R.id.addComment).setOnClickListener(new View.OnClickListener()
@@ -97,6 +99,12 @@ public class ArticleActivity extends Activity
                 addCommentPrompt();
             }
         });
+    }
+
+    private void updateCommentCount(long count)
+    {
+        TextView commentCount = (TextView)findViewById(R.id.comment_count);
+        commentCount.setText(String.format("Comments: %d", count));
     }
 
     private void addCommentPrompt()
@@ -134,7 +142,8 @@ public class ArticleActivity extends Activity
 
     private void insertComment(final String name, final String comments)
     {
-        new AddCommentTask(DatabaseHelper.getInstance(this), articleId, name, comments).execute();
+        commentTask = new AddCommentTask(this, articleId, name, comments);
+        commentTask.execute();
     }
 
     private static class ArticleModel
@@ -217,12 +226,7 @@ public class ArticleActivity extends Activity
 
                 //Finally, get a count of the comments. We will use the QueryBuilder class again.
                 Dao<Comment, Integer> commentDao = helper.getCommentDao();
-                PreparedQuery<Comment> countQuery = commentDao.queryBuilder()
-                        .setCountOf(true)
-                        .where()
-                        .eq(Comment.ARTICLE_COLUMN, articleId)
-                        .prepare();
-                model.commentCount = commentDao.countOf(countQuery);
+                model.commentCount = countCommentsForId(commentDao, articleId);
 
                 return model;
             }
@@ -254,22 +258,24 @@ public class ArticleActivity extends Activity
         }
     }
 
-    private static class AddCommentTask extends AsyncTask<Void, Void, Boolean>
+    private static class AddCommentTask extends AsyncTask<Void, Void, Long>
     {
         private int articleId;
         private String name, comments;
+        private ArticleActivity host;
         private DatabaseHelper helper;
 
-        private AddCommentTask(DatabaseHelper helper, int articleId, String name, String comments)
+        private AddCommentTask(ArticleActivity host, int articleId, String name, String comments)
         {
-            this.helper = helper;
+            this.host = host;
             this.articleId = articleId;
             this.comments = comments;
             this.name = name;
+            helper = DatabaseHelper.getInstance(host);
         }
 
         @Override
-        protected Boolean doInBackground(Void... voids)
+        protected Long doInBackground(Void... voids)
         {
             //Note: The ORM only needs the ID set for foreign objects for it to properly set the column value.
             Article article = new Article();
@@ -279,15 +285,37 @@ public class ArticleActivity extends Activity
             //Perform the insert.
             try
             {
-                helper.getCommentDao().create(comment);
+                Dao<Comment, Integer> commentDao = helper.getCommentDao();
+                commentDao.create(comment);
+                return countCommentsForId(commentDao, articleId);
             }
             catch (SQLException e)
             {
                 Log.e(TAG, "Unable to add comment.", e);
                 throw new RuntimeException(e);
             }
-
-            return true;
         }
+
+        @Override
+        protected void onPostExecute(Long count)
+        {
+            if (host != null)
+                host.updateCommentCount(count);
+        }
+
+        public void detach()
+        {
+            host = null;
+        }
+    }
+
+    private static long countCommentsForId(Dao<Comment, Integer> commentDao, int articleId) throws SQLException
+    {
+        PreparedQuery<Comment> countQuery = commentDao.queryBuilder()
+                .setCountOf(true)
+                .where()
+                .eq(Comment.ARTICLE_COLUMN, articleId)
+                .prepare();
+        return commentDao.countOf(countQuery);
     }
 }
