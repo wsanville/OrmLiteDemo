@@ -14,11 +14,11 @@ public class ArticleCategory
             ARTICLE_ID_COLUMN = "article_id",
             CATEGORY_ID_COLUMN = "category_id";
 
-    @DatabaseField(foreign = true, canBeNull = false, uniqueCombo = true, columnName = ARTICLE_ID_COLUMN,
+    @DatabaseField(foreign = true, foreignAutoRefresh = true, canBeNull = false, uniqueCombo = true, columnName = ARTICLE_ID_COLUMN,
             columnDefinition = "integer references " + Article.TABLE_NAME + "(" + Article.ID_COLUMN + ") on delete cascade")
     private Article article;
 
-    @DatabaseField(foreign = true, canBeNull = false, uniqueCombo = true, columnName = CATEGORY_ID_COLUMN,
+    @DatabaseField(foreign = true, foreignAutoRefresh = true, canBeNull = false, uniqueCombo = true, columnName = CATEGORY_ID_COLUMN,
             columnDefinition = "integer references " + Category.TABLE_NAME + "(" + Category.ID_COLUMN + ") on delete cascade")
     private Category category;
 

@@ -5,25 +5,36 @@ import android.app.ProgressDialog;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 import co.touchlab.ormlitedemo.data.*;
 import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
+/**
+ * This activity will be a ListView of Categories, and any Articles that belong to the Category.
+ * The purpose of this activity is to demo inserting data, as well as performing queries using OrmLite.
+ */
 public class MainActivity extends Activity
 {
     private static String TAG = "MainActivity";
     private LoadArticleTask task;
     private ProgressDialog dialog;
+    private ListView listView;
 
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+        listView = (ListView)findViewById(R.id.listView);
 
         System.setProperty("log.tag.ORMLite", "DEBUG");
         dialog = ProgressDialog.show(this, null, "Loading Articles", true, false);
@@ -49,12 +60,124 @@ public class MainActivity extends Activity
 
     public void handleDataLoaded(ArticleListModel model)
     {
+        listView.setAdapter(new MainAdapter(model));
         dialog.dismiss();
+    }
+
+    private class MainAdapter extends BaseAdapter
+    {
+        private final static int TYPE_CATEGORY = 0, TYPE_ARTICLE = 1;
+
+        private ArticleListModel model;
+        private LayoutInflater inflater;
+        SimpleDateFormat formatter = new SimpleDateFormat("'Created on' M/d/yyyy h:mm a");
+
+        private MainAdapter(ArticleListModel model)
+        {
+            this.model = model;
+            inflater = LayoutInflater.from(MainActivity.this);
+        }
+
+        @Override
+        public int getCount()
+        {
+            return model.flattenedItems.size();
+        }
+
+        @Override
+        public Object getItem(int i)
+        {
+            return model.flattenedItems.get(i);
+        }
+
+        @Override
+        public long getItemId(int i)
+        {
+            return i;
+        }
+
+        @Override
+        public int getViewTypeCount()
+        {
+            return 2; //We want to show some category separators in the ListView;
+        }
+
+        @Override
+        public int getItemViewType(int position)
+        {
+            Object item = getItem(position);
+            return item instanceof CategoryModel ? TYPE_CATEGORY : TYPE_ARTICLE;
+        }
+
+        @Override
+        public View getView(int position, View view, ViewGroup viewGroup)
+        {
+            Object item = getItem(position);
+            int itemViewType = getItemViewType(position);
+
+            //Here we inflate/fill out the correct view based off the type of the item we're processing.
+            if (itemViewType == TYPE_CATEGORY)
+            {
+                CategoryModel model = (CategoryModel)item;
+                if (view == null)
+                    view = inflater.inflate(R.layout.list_category, null);
+                //Just fill out the display text for a CategoryModel
+                ((TextView)view).setText(model.getText());
+            }
+            else
+            {
+                Article article = (Article)item;
+                if (view == null)
+                    view = inflater.inflate(R.layout.list_item, null);
+                //This demo will just show a title and created on date for articles.
+                ((TextView)view.findViewById(R.id.list_complex_title)).setText(article.getTitle());
+                ((TextView)view.findViewById(R.id.list_complex_caption)).setText(formatter.format(article.getPublishedDate()));
+            }
+
+            return view;
+        }
     }
 
     private static class ArticleListModel
     {
+        List<Object> flattenedItems = new ArrayList<Object>();
+    }
 
+    /**
+     * A helper class for formatting our output in this Activity's ListView.
+     */
+    private static class CategoryModel implements Comparable<CategoryModel>
+    {
+        Category category;
+        List<Article> articleList = new ArrayList<Article>();
+
+        private CategoryModel(Category category)
+        {
+            if (category == null)
+                throw new IllegalArgumentException("Passed in category must be non-null!");
+            this.category = category;
+        }
+
+        public Integer getId()
+        {
+            return category.getId();
+        }
+
+        public String getText()
+        {
+            return category.formatFullName();
+        }
+
+        public void addArticle(Article a)
+        {
+            articleList.add(a);
+        }
+
+        @Override
+        public int compareTo(CategoryModel that)
+        {
+            return this.category.formatFullName().compareToIgnoreCase(that.category.formatFullName());
+        }
     }
 
     private static class LoadArticleTask extends AsyncTask<Void, Void, ArticleListModel>
@@ -74,24 +197,53 @@ public class MainActivity extends Activity
             DatabaseHelper helper = DatabaseHelper.getInstance(host);
             try
             {
-                Dao<Article,Integer> articleDao = helper.getArticleDao();
+                Dao<Article, Integer> articleDao = helper.getArticleDao();
+                //Check if we need to insert our sample data.
+                if (articleDao.countOf() == 0)
+                    insertSampleData(helper);
 
-                List<Article> articles = articleDao.queryForAll();
-                if (articles.size() == 0)
-                    articles = insertSampleData(helper);
+                /* This activity will display all categories and articles. So, we will query the cross reference table,
+                 * and use the ORM to fill in our data objects. */
+                Dao articleCategoryDao = helper.getArticleCategoryDao();
+                Map<Integer, CategoryModel> allCategories = new HashMap<Integer, CategoryModel>();
+                for (Object item : articleCategoryDao.queryForAll())
+                {
+                    ArticleCategory mapping = (ArticleCategory)item;
 
+                    //Build a unique set of Categories from the data that was returned
+                    CategoryModel model = new CategoryModel(mapping.getCategory());
+                    Integer key = model.getId();
 
+                    if (allCategories.containsKey(key))
+                        allCategories.get(key).addArticle(mapping.getArticle());
+                    else
+                    {
+                        model.addArticle(mapping.getArticle());
+                        allCategories.put(key, model);
+                    }
+                }
+
+                //Sort the categories, and return the data.
+                List<CategoryModel> sorted = new ArrayList<CategoryModel>(allCategories.values());
+                Collections.sort(sorted);
+
+                ArticleListModel returnValue = new ArticleListModel();
+                for (CategoryModel categoryModel : sorted)
+                {
+                    returnValue.flattenedItems.add(categoryModel);
+                    returnValue.flattenedItems.addAll(categoryModel.articleList);
+                }
+
+                return returnValue;
             }
             catch (SQLException e)
             {
                 Log.e(TAG, "LoadArticleTask doInBackground failed.", e);
                 throw new RuntimeException(e);
             }
-
-            return null;
         }
 
-        private List<Article> insertSampleData(DatabaseHelper helper) throws SQLException
+        private void insertSampleData(DatabaseHelper helper) throws SQLException
         {
             final int SAMPLE_COUNT = 50;
             final String SAMPLE_ARTICLE_TEXT = "Aenean id justo non dui sodales molestie quis et nibh. Fusce eu nulla enim, id feugiat nisi. Donec feugiat est eget leo dictum rutrum. Morbi faucibus nulla a urna blandit sed consequat tellus fermentum. Quisque nec turpis eleifend mauris laoreet lacinia. Curabitur sollicitudin arcu quis mauris semper non blandit lectus pharetra. Nam condimentum egestas turpis, nec dictum enim imperdiet pharetra. Sed vel mauris magna. Cras non placerat odio. Donec faucibus odio id dolor elementum non consectetur justo suscipit? Curabitur mollis lectus ac sem consectetur lobortis. Quisque faucibus magna vitae sem auctor ullamcorper?";
@@ -116,19 +268,17 @@ public class MainActivity extends Activity
             for (Category category : subCategories)
                 categoryDao.create(category);
 
-            List<Article> result = new ArrayList<Article>(SAMPLE_COUNT);
             for (int i = 0; i < SAMPLE_COUNT; i++)
             {
                 //Make a new Article instance, and call create() on the DAO. That call will set the ID of the object.
                 Article article = new Article(new Date(), SAMPLE_ARTICLE_TEXT, "Article " + i);
                 articleDao.create(article);
-                result.add(article);
 
                 //Insert cross reference(s) to set the author(s) of this article
                 if (i == 0)
                 {
                     //Let's make the first article have many authors.
-                    for (Author author  : authors)
+                    for (Author author : authors)
                         articleAuthorDao.create(new ArticleAuthor(author, article));
                 }
                 else
@@ -151,8 +301,6 @@ public class MainActivity extends Activity
                     articleCategoryDao.create(new ArticleCategory(article, category));
                 }
             }
-
-            return result;
         }
 
         @Override

@@ -3,6 +3,11 @@ package co.touchlab.ormlitedemo.data;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * A simple Category object annotated for use with OrmLite.
  */
@@ -24,7 +29,7 @@ public class Category
     @DatabaseField(canBeNull = false, columnName = NAME_COLUMN)
     private String name;
 
-    @DatabaseField(foreign = true, canBeNull = true, columnName = PARENT_COLUMN,
+    @DatabaseField(foreign = true, foreignAutoRefresh = true, canBeNull = true, columnName = PARENT_COLUMN,
             columnDefinition = "integer references " + TABLE_NAME + "(" + ID_COLUMN + ") on delete cascade")
     private Category parent;
 
@@ -75,4 +80,36 @@ public class Category
     {
         this.parent = parent;
     }
+
+
+    private String lazyFormattedName;
+    /**
+     * Formats this category's name, with the names of any non-null parents.
+     * @return The formatted full name of this category.
+     */
+    public String formatFullName()
+    {
+        if (lazyFormattedName != null)
+            return lazyFormattedName;
+
+        final String DELIMITER = " > ";
+        ArrayList<String> parts = new ArrayList<String>();
+        Category current = this;
+        while (current != null)
+        {
+            parts.add(current.getName());
+            current = current.getParent();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = parts.size() - 1; i >= 0; i--)
+        {
+            sb.append(parts.get(i));
+            if (i != 0)
+                sb.append(DELIMITER);
+        }
+        lazyFormattedName = sb.toString();
+        return lazyFormattedName;
+    }
+
 }
