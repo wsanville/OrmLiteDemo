@@ -110,6 +110,12 @@ public class MainActivity extends Activity
         }
 
         @Override
+        public boolean isEnabled(int position)
+        {
+            return getItemViewType(position) == TYPE_ARTICLE;
+        }
+
+        @Override
         public View getView(int position, View view, ViewGroup viewGroup)
         {
             Object item = getItem(position);
@@ -248,7 +254,7 @@ public class MainActivity extends Activity
             final int SAMPLE_COUNT = 50;
             final String SAMPLE_ARTICLE_TEXT = "Aenean id justo non dui sodales molestie quis et nibh. Fusce eu nulla enim, id feugiat nisi. Donec feugiat est eget leo dictum rutrum. Morbi faucibus nulla a urna blandit sed consequat tellus fermentum. Quisque nec turpis eleifend mauris laoreet lacinia. Curabitur sollicitudin arcu quis mauris semper non blandit lectus pharetra. Nam condimentum egestas turpis, nec dictum enim imperdiet pharetra. Sed vel mauris magna. Cras non placerat odio. Donec faucibus odio id dolor elementum non consectetur justo suscipit? Curabitur mollis lectus ac sem consectetur lobortis. Quisque faucibus magna vitae sem auctor ullamcorper?";
             Author[] authors = new Author[] { new Author("First Author", "first@example.com"), new Author("Second Author", "second@example.com"), new Author("Third Author", "third@example.com") };
-            Category[] topCategories = new Category[] { new Category("Android Layouts", null), new Category("Databases", null), new Category("Network Communication", null), new Category("Screen Rotation", null), new Category("Threading", null) };
+            Category[] topCategories = new Category[] { new Category("Screen Rotation", null), new Category("Databases", null), new Category("Threading", null), new Category("Android Layouts", null), new Category("Network Communication", null) };
             Category[] subCategories = new Category[] { new Category("SQL", topCategories[1]) };
 
             //We will need a few DAO objects from our OrmLiteSqliteOpenHelper instance

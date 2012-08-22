@@ -6,9 +6,9 @@
     <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Items from SQLite database"
+            android:text="Articles and Categories from a SQLite database"
             android:textAppearance="@android:style/TextAppearance.Large"
-            android:padding="4dp"/>
+            android:padding="8dp"/>
     <ListView android:layout_weight="1"
               android:layout_width="match_parent"
               android:layout_height="0dp"
