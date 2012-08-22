@@ -9,6 +9,7 @@ import co.touchlab.ormlitedemo.data.*;
 import com.j256.ormlite.dao.Dao;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -74,9 +75,12 @@ public class MainActivity extends Activity
             try
             {
                 Dao<Article,Integer> articleDao = helper.getArticleDao();
+
                 List<Article> articles = articleDao.queryForAll();
                 if (articles.size() == 0)
-                    insertSampleData(helper);
+                    articles = insertSampleData(helper);
+
+
             }
             catch (SQLException e)
             {
@@ -87,7 +91,7 @@ public class MainActivity extends Activity
             return null;
         }
 
-        private void insertSampleData(DatabaseHelper helper) throws SQLException
+        private List<Article> insertSampleData(DatabaseHelper helper) throws SQLException
         {
             final int SAMPLE_COUNT = 50;
             final String SAMPLE_ARTICLE_TEXT = "Aenean id justo non dui sodales molestie quis et nibh. Fusce eu nulla enim, id feugiat nisi. Donec feugiat est eget leo dictum rutrum. Morbi faucibus nulla a urna blandit sed consequat tellus fermentum. Quisque nec turpis eleifend mauris laoreet lacinia. Curabitur sollicitudin arcu quis mauris semper non blandit lectus pharetra. Nam condimentum egestas turpis, nec dictum enim imperdiet pharetra. Sed vel mauris magna. Cras non placerat odio. Donec faucibus odio id dolor elementum non consectetur justo suscipit? Curabitur mollis lectus ac sem consectetur lobortis. Quisque faucibus magna vitae sem auctor ullamcorper?";
@@ -112,11 +116,13 @@ public class MainActivity extends Activity
             for (Category category : subCategories)
                 categoryDao.create(category);
 
+            List<Article> result = new ArrayList<Article>(SAMPLE_COUNT);
             for (int i = 0; i < SAMPLE_COUNT; i++)
             {
                 //Make a new Article instance, and call create() on the DAO. That call will set the ID of the object.
                 Article article = new Article(new Date(), SAMPLE_ARTICLE_TEXT, "Article " + i);
                 articleDao.create(article);
+                result.add(article);
 
                 //Insert cross reference(s) to set the author(s) of this article
                 if (i == 0)
@@ -133,11 +139,20 @@ public class MainActivity extends Activity
                 }
 
                 //Insert another cross reference to set categories for this article.
-                int catIndex = i / (SAMPLE_COUNT / topCategories.length);
-                Log.d(TAG, "catIndex = " + catIndex);
-                Category category = topCategories[catIndex];
-                articleCategoryDao.create(new ArticleCategory(article, category));
+                if (i == 15)
+                {
+                    //For some diversity, we will put this article in a sub category
+                    articleCategoryDao.create(new ArticleCategory(article, subCategories[0]));
+                }
+                else
+                {
+                    int catIndex = i / (SAMPLE_COUNT / topCategories.length);
+                    Category category = topCategories[catIndex];
+                    articleCategoryDao.create(new ArticleCategory(article, category));
+                }
             }
+
+            return result;
         }
 
         @Override
