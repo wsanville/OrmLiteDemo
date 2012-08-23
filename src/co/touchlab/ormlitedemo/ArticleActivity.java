@@ -2,7 +2,6 @@ package co.touchlab.ormlitedemo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
@@ -22,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 /**
  * An Activity for showing more types of queries using OrmLite.
@@ -65,8 +65,10 @@ public class ArticleActivity extends Activity
     {
         if (task != null)
             task.detach();
+
         if (commentTask != null)
-            commentTask.detach(); //no need to retain this guy
+            commentTask.detach(); //No need to retain this AsyncTask. Upon orientation change, the new transaction to read data will be serialized and see any pending update.
+
         return task;
     }
 
@@ -202,39 +204,39 @@ public class ArticleActivity extends Activity
         @Override
         protected ArticleModel doInBackground(Void... voids)
         {
-            DatabaseHelper helper = DatabaseHelper.getInstance(host);
-            try
+            final DatabaseHelper helper = DatabaseHelper.getInstance(host);
+            //We will perform multiple queries on the database, so we will use a transaction, which will help performance.
+            return helper.callInTransaction(new Callable<ArticleModel>()
             {
-                //First, we use queryForId() to get the Article itself.
-                Dao<Article,Integer> articleDao = helper.getArticleDao();
-                Article article = articleDao.queryForId(articleId);
-                ArticleModel model = new ArticleModel(article);
-
-                //Then, we get all the Authors for this Article. This will demo the QueryBuilder class.
-                Dao authorDao = helper.getArticleAuthorDao();
-                PreparedQuery query = authorDao.queryBuilder()
-                        .where()
-                        .eq(ArticleAuthor.ARTICLE_ID_COLUMN, articleId)
-                        .prepare();
-                //Now, run the query
-                List results = authorDao.query(query);
-                for (Object item : results)
+                @Override
+                public ArticleModel call() throws SQLException
                 {
-                    Author author = ((ArticleAuthor)item).getAuthor();
-                    model.authorList.add(author);
+                    //First, we use queryForId() to get the Article itself.
+                    Dao<Article, Integer> articleDao = helper.getArticleDao();
+                    Article article = articleDao.queryForId(articleId);
+                    ArticleModel model = new ArticleModel(article);
+
+                    //Then, we get all the Authors for this Article. This will demo the QueryBuilder class.
+                    Dao authorDao = helper.getArticleAuthorDao();
+                    PreparedQuery query = authorDao.queryBuilder()
+                            .where()
+                            .eq(ArticleAuthor.ARTICLE_ID_COLUMN, articleId)
+                            .prepare();
+                    //Now, run the query
+                    List results = authorDao.query(query);
+                    for (Object item : results)
+                    {
+                        Author author = ((ArticleAuthor)item).getAuthor();
+                        model.authorList.add(author);
+                    }
+
+                    //Finally, get a count of the comments. We will use the QueryBuilder class again.
+                    Dao<Comment, Integer> commentDao = helper.getCommentDao();
+                    model.commentCount = countCommentsForId(commentDao, articleId);
+
+                    return model;
                 }
-
-                //Finally, get a count of the comments. We will use the QueryBuilder class again.
-                Dao<Comment, Integer> commentDao = helper.getCommentDao();
-                model.commentCount = countCommentsForId(commentDao, articleId);
-
-                return model;
-            }
-            catch (SQLException e)
-            {
-                Log.e(TAG, "Error loading article data.", e);
-                throw new RuntimeException(e);
-            }
+            });
         }
 
         @Override
@@ -280,20 +282,19 @@ public class ArticleActivity extends Activity
             //Note: The ORM only needs the ID set for foreign objects for it to properly set the column value.
             Article article = new Article();
             article.setId(articleId);
-            Comment comment = new Comment(article, new Date(), comments, name);
+            final Comment comment = new Comment(article, new Date(), comments, name);
 
-            //Perform the insert.
-            try
+            //Perform the insert. Then, get a new count.
+            return helper.callInTransaction(new Callable<Long>()
             {
-                Dao<Comment, Integer> commentDao = helper.getCommentDao();
-                commentDao.create(comment);
-                return countCommentsForId(commentDao, articleId);
-            }
-            catch (SQLException e)
-            {
-                Log.e(TAG, "Unable to add comment.", e);
-                throw new RuntimeException(e);
-            }
+                @Override
+                public Long call() throws SQLException
+                {
+                    Dao<Comment, Integer> commentDao = helper.getCommentDao();
+                    commentDao.create(comment);
+                    return countCommentsForId(commentDao, articleId);
+                }
+            });
         }
 
         @Override
@@ -309,6 +310,14 @@ public class ArticleActivity extends Activity
         }
     }
 
+    /**
+     * This function is used in multiple places, so we will define it once, as a static method.
+     *
+     * @param commentDao A Dao object for use when querying.
+     * @param articleId The ID of the article.
+     * @return A count of the comments associated with the given ID.
+     * @throws SQLException
+     */
     private static long countCommentsForId(Dao<Comment, Integer> commentDao, int articleId) throws SQLException
     {
         PreparedQuery<Comment> countQuery = commentDao.queryBuilder()
