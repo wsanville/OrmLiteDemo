@@ -14,12 +14,14 @@
                 android:layout_height="wrap_content"
                 android:inputType="text|textCapWords"
                 android:singleLine="true"
+                android:imeOptions="actionNext"
                 android:hint="Your Name"/>
         <EditText
                 android:id="@+id/comment"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="text|textMultiLine|textCapSentences|textAutoCorrect"
+                android:imeOptions="actionDone"
                 android:hint="Comments"
                 android:gravity="left|top"
                 android:lines="3"/>
