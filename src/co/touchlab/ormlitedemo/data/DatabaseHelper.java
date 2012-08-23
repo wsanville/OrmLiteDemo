@@ -75,6 +75,8 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
             TableUtils.dropTable(connectionSource, Category.class, false);
             TableUtils.dropTable(connectionSource, Author.class, false);
             TableUtils.dropTable(connectionSource, Article.class, false);
+
+            onCreate(sqLiteDatabase, connectionSource);
         }
         catch (SQLException e)
         {
@@ -88,8 +90,7 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
     {
         super.onOpen(db);
         //When using API level 8 or higher, we can use referential integrity with foreign keys.
-        if (!db.isReadOnly())
-            db.execSQL("PRAGMA foreign_keys=ON;");
+        db.execSQL("PRAGMA foreign_keys=ON;");
     }
 
     /**
