@@ -18,6 +18,7 @@ import com.j256.ormlite.dao.Dao;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 /**
  * This activity will be a ListView of Categories, and any Articles that belong to the Category.
@@ -63,7 +64,6 @@ public class MainActivity extends Activity
     public void handleDataLoaded(ArticleListModel model)
     {
         listView.setAdapter(new MainAdapter(model));
-        findViewById(R.id.divider).setVisibility(View.VISIBLE);
         dialog.dismiss();
     }
 
@@ -217,54 +217,53 @@ public class MainActivity extends Activity
         @Override
         protected ArticleListModel doInBackground(Void... voids)
         {
-            DatabaseHelper helper = DatabaseHelper.getInstance(host);
-            try
+            final DatabaseHelper helper = DatabaseHelper.getInstance(host);
+            return helper.callInTransaction(new Callable<ArticleListModel>()
             {
-                Dao<Article, Integer> articleDao = helper.getArticleDao();
-                //Check if we need to insert our sample data.
-                if (articleDao.countOf() == 0)
-                    insertSampleData(helper);
-
-                /* This activity will display all categories and articles. So, we will query the cross reference table,
-                 * and use the ORM to fill in our data objects. */
-                Dao articleCategoryDao = helper.getArticleCategoryDao();
-                Map<Integer, CategoryModel> allCategories = new HashMap<Integer, CategoryModel>();
-                for (Object item : articleCategoryDao.queryForAll())
+                @Override
+                public ArticleListModel call() throws SQLException
                 {
-                    //Our data returned is a pair of Article and Category. We need to now organize the query results.
-                    ArticleCategory mapping = (ArticleCategory)item;
+                    Dao<Article, Integer> articleDao = helper.getArticleDao();
+                    //Check if we need to insert our sample data.
+                    if (articleDao.countOf() == 0)
+                        insertSampleData(helper);
 
-                    //Build a unique set of Categories from the data that was returned.
-                    CategoryModel model = new CategoryModel(mapping.getCategory());
-                    Integer key = model.getId();
-
-                    if (allCategories.containsKey(key))
-                        allCategories.get(key).addArticle(mapping.getArticle());
-                    else
+                    /* This activity will display all categories and articles. So, we will query the cross reference table,
+                     * and use the ORM to fill in our data objects. */
+                    Dao articleCategoryDao = helper.getArticleCategoryDao();
+                    Map<Integer, CategoryModel> allCategories = new HashMap<Integer, CategoryModel>();
+                    for (Object item : articleCategoryDao.queryForAll())
                     {
-                        model.addArticle(mapping.getArticle());
-                        allCategories.put(key, model);
+                        //Our data returned is a pair of Article and Category. We need to now organize the query results.
+                        ArticleCategory mapping = (ArticleCategory)item;
+
+                        //Build a unique set of Categories from the data that was returned.
+                        CategoryModel model = new CategoryModel(mapping.getCategory());
+                        Integer key = model.getId();
+
+                        if (allCategories.containsKey(key))
+                            allCategories.get(key).addArticle(mapping.getArticle());
+                        else
+                        {
+                            model.addArticle(mapping.getArticle());
+                            allCategories.put(key, model);
+                        }
                     }
+
+                    //Sort the categories, and return the data.
+                    List<CategoryModel> sorted = new ArrayList<CategoryModel>(allCategories.values());
+                    Collections.sort(sorted);
+
+                    ArticleListModel returnValue = new ArticleListModel();
+                    for (CategoryModel categoryModel : sorted)
+                    {
+                        returnValue.flattenedItems.add(categoryModel);
+                        returnValue.flattenedItems.addAll(categoryModel.articleList);
+                    }
+
+                    return returnValue;
                 }
-
-                //Sort the categories, and return the data.
-                List<CategoryModel> sorted = new ArrayList<CategoryModel>(allCategories.values());
-                Collections.sort(sorted);
-
-                ArticleListModel returnValue = new ArticleListModel();
-                for (CategoryModel categoryModel : sorted)
-                {
-                    returnValue.flattenedItems.add(categoryModel);
-                    returnValue.flattenedItems.addAll(categoryModel.articleList);
-                }
-
-                return returnValue;
-            }
-            catch (SQLException e)
-            {
-                Log.e(TAG, "LoadArticleTask doInBackground failed.", e);
-                throw new RuntimeException(e);
-            }
+            });
         }
 
         /**

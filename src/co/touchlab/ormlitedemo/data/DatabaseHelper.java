@@ -5,10 +5,12 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 import com.j256.ormlite.android.apptools.OrmLiteSqliteOpenHelper;
 import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.misc.TransactionManager;
 import com.j256.ormlite.support.ConnectionSource;
 import com.j256.ormlite.table.TableUtils;
 
 import java.sql.SQLException;
+import java.util.concurrent.Callable;
 
 /**
  * A SqliteOpenHelper that we will use as a singleton in our application.
@@ -41,10 +43,12 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
     @Override
     public void onCreate(SQLiteDatabase sqLiteDatabase, ConnectionSource connectionSource)
     {
-        //Here we use the Annotations on our classes and OrmLite to create all of our tables in our relation.
+        //Here, TableUtils will use the Annotations on our classes to create all of the tables in our relation.
         try
         {
-            //When using foreign keys, we must be sure to create tables in the proper order
+            /* When using foreign keys, we must be sure to create tables in the proper order.
+             * For example, since the ArticleCategory table has foreign keys to both the Article and Category tables,
+             * we must declare ArticleCategory after the two others. */
             TableUtils.createTable(connectionSource, Category.class);
             TableUtils.createTable(connectionSource, Article.class);
             TableUtils.createTable(connectionSource, ArticleCategory.class);
@@ -64,7 +68,7 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
     {
         try
         {
-            //When using foreign keys, we must be sure to drop tables in the proper order, again
+            //When using foreign keys, we must be sure to drop tables in the proper order, again.
             TableUtils.dropTable(connectionSource, Comment.class, false);
             TableUtils.dropTable(connectionSource, ArticleAuthor.class, false);
             TableUtils.dropTable(connectionSource, ArticleCategory.class, false);
@@ -86,6 +90,25 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
         //When using API level 8 or higher, we can use referential integrity with foreign keys.
         if (!db.isReadOnly())
             db.execSQL("PRAGMA foreign_keys=ON;");
+    }
+
+    /**
+     * Creates a TransactionManager, and runs the given callback.
+     * @param callback A Callable to run from inside a transaction.
+     * @param <T> The return type of the Callable.
+     * @return The result of the Callable that was passed in.
+     */
+    public <T> T callInTransaction(Callable<T> callback)
+    {
+        try
+        {
+            return new TransactionManager(getConnectionSource()).callInTransaction(callback);
+        }
+        catch (SQLException e)
+        {
+            Log.e(TAG, "Exception occurred in transaction.", e);
+            throw new RuntimeException(e);
+        }
     }
 
     /* DAO object accessors with specific types. */
