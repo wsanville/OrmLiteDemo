@@ -137,12 +137,14 @@ public class DatabaseHelper extends OrmLiteSqliteOpenHelper
         return getDao(Author.class);
     }
 
-    public Dao getArticleAuthorDao() throws SQLException
+    @SuppressWarnings("unchecked")
+    public Dao<ArticleAuthor, Void> getArticleAuthorDao() throws SQLException
     {
         return getDao(ArticleAuthor.class);
     }
 
-    public Dao getArticleCategoryDao() throws SQLException
+    @SuppressWarnings("unchecked")
+    public Dao<ArticleCategory, Void> getArticleCategoryDao() throws SQLException
     {
         return getDao(ArticleCategory.class);
     }

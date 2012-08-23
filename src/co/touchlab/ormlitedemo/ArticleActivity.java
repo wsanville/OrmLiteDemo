@@ -6,7 +6,6 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
@@ -28,7 +27,6 @@ import java.util.concurrent.Callable;
  */
 public class ArticleActivity extends Activity
 {
-    private static String TAG = "ArticleActivity";
     public static String ARTICLE_ID = "ARTICLE_ID";
 
     private LoadArticleTask task;
@@ -217,8 +215,8 @@ public class ArticleActivity extends Activity
                     ArticleModel model = new ArticleModel(article);
 
                     //Then, we get all the Authors for this Article. This will demo the QueryBuilder class.
-                    Dao authorDao = helper.getArticleAuthorDao();
-                    PreparedQuery query = authorDao.queryBuilder()
+                    Dao<ArticleAuthor, Void> authorDao = helper.getArticleAuthorDao();
+                    PreparedQuery<ArticleAuthor> query = authorDao.queryBuilder()
                             .where()
                             .eq(ArticleAuthor.ARTICLE_ID_COLUMN, articleId)
                             .prepare();
@@ -314,7 +312,7 @@ public class ArticleActivity extends Activity
      * This function is used in multiple places, so we will define it once, as a static method.
      *
      * @param commentDao A Dao object for use when querying.
-     * @param articleId The ID of the article.
+     * @param articleId  The ID of the article.
      * @return A count of the comments associated with the given ID.
      * @throws SQLException
      */

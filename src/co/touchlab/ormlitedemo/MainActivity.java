@@ -5,7 +5,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,7 +25,6 @@ import java.util.concurrent.Callable;
  */
 public class MainActivity extends Activity
 {
-    private static String TAG = "MainActivity";
     private LoadArticleListTask task;
     private ProgressDialog dialog;
     private ListView listView;
@@ -82,7 +80,7 @@ public class MainActivity extends Activity
             {
                 Article article = (Article)view.getTag();
                 MainActivity.this.startActivity(new Intent(MainActivity.this, ArticleActivity.class)
-                    .putExtra(ArticleActivity.ARTICLE_ID, article.getId()));
+                        .putExtra(ArticleActivity.ARTICLE_ID, article.getId()));
             }
         };
 
@@ -230,13 +228,10 @@ public class MainActivity extends Activity
 
                     /* This activity will display all categories and articles. So, we will query the cross reference table,
                      * and use the ORM to fill in our data objects. */
-                    Dao articleCategoryDao = helper.getArticleCategoryDao();
+                    Dao<ArticleCategory, Void> articleCategoryDao = helper.getArticleCategoryDao();
                     Map<Integer, CategoryModel> allCategories = new HashMap<Integer, CategoryModel>();
-                    for (Object item : articleCategoryDao.queryForAll())
+                    for (ArticleCategory mapping : articleCategoryDao.queryForAll())
                     {
-                        //Our data returned is a pair of Article and Category. We need to now organize the query results.
-                        ArticleCategory mapping = (ArticleCategory)item;
-
                         //Build a unique set of Categories from the data that was returned.
                         CategoryModel model = new CategoryModel(mapping.getCategory());
                         Integer key = model.getId();
@@ -268,6 +263,7 @@ public class MainActivity extends Activity
 
         /**
          * Called for the first run of the application (or when all Articles have been deleted).
+         *
          * @param helper An instance of our DatabaseHelper.
          * @throws SQLException
          */
@@ -285,8 +281,8 @@ public class MainActivity extends Activity
             Dao<Author, Integer> authorDao = helper.getAuthorDao();
             Dao<Category, Integer> categoryDao = helper.getCategoryDao();
             Dao<Article, Integer> articleDao = helper.getArticleDao();
-            Dao articleAuthorDao = helper.getArticleAuthorDao();
-            Dao articleCategoryDao = helper.getArticleCategoryDao();
+            Dao<ArticleAuthor, Void> articleAuthorDao = helper.getArticleAuthorDao();
+            Dao<ArticleCategory, Void> articleCategoryDao = helper.getArticleCategoryDao();
 
             //Insert all of our sample authors. The DAO will set the database generated ID, which we will need later.
             for (Author author : authors)
