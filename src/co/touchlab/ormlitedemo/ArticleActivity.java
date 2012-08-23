@@ -212,6 +212,8 @@ public class ArticleActivity extends Activity
                     //First, we use queryForId() to get the Article itself.
                     Dao<Article, Integer> articleDao = helper.getArticleDao();
                     Article article = articleDao.queryForId(articleId);
+
+                    //Start to construct our return object, which will hold all data needed to populate the Activity.
                     ArticleModel model = new ArticleModel(article);
 
                     //Then, we get all the Authors for this Article. This will demo the QueryBuilder class.
@@ -221,10 +223,10 @@ public class ArticleActivity extends Activity
                             .eq(ArticleAuthor.ARTICLE_ID_COLUMN, articleId)
                             .prepare();
                     //Now, run the query
-                    List results = authorDao.query(query);
-                    for (Object item : results)
+                    List<ArticleAuthor> results = authorDao.query(query);
+                    for (ArticleAuthor item : results)
                     {
-                        Author author = ((ArticleAuthor)item).getAuthor();
+                        Author author = item.getAuthor();
                         model.authorList.add(author);
                     }
 
